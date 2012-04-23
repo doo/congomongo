@@ -101,7 +101,7 @@ object may be passed as the last argument."
 
 (defn connection? [x]
   (and (map? x)
-       (:db x)
+       (contains? x :db)
        (:mongo x)))
 
 (defn- ^DB get-db
@@ -179,10 +179,14 @@ releases.  Please use 'make-connection' in combination with
 (def write-concern-map
   {:none   WriteConcern/NONE
    :normal WriteConcern/NORMAL
-   :strict WriteConcern/SAFE})
+   :strict WriteConcern/SAFE ;; left for backwards compatibility
+   :safe WriteConcern/SAFE
+   :fsync-safe WriteConcern/FSYNC_SAFE
+   :replica-safe WriteConcern/REPLICAS_SAFE})
 
 (defn set-write-concern
-  "Sets the write concern on the connection. Setting is one of :none, :normal, :strict"
+  "Sets the write concern on the connection. Setting is a key in the
+  write-concern-map: :none, :normal, :strict, :safe, :fsync-safe"
   [connection setting]
   (assert (contains? (set (keys write-concern-map)) setting))
   (.setWriteConcern (get-db connection)
@@ -354,10 +358,9 @@ releases.  Please use 'make-connection' in combination with
   [coll obj & {:keys [from to many]
                :or {from :clojure to :clojure many false}}]
   (let [coerced-obj (coerce obj [from :mongo] :many many)
-        ^com.mongodb.WriteConcern normal-concern (get write-concern-map :normal)
         res (if many
               (.insert ^DBCollection (get-coll coll) ^java.util.List coerced-obj)
-              (.insert ^DBCollection (get-coll coll) ^DBObject coerced-obj normal-concern))]
+              (.insert ^DBCollection (get-coll coll) ^java.util.List (list coerced-obj)))]
     (coerce coerced-obj [:mongo to] :many many)))
 
 (defn mass-insert!
@@ -399,7 +402,7 @@ releases.  Please use 'make-connection' in combination with
                              return-new? false upsert? false from :clojure as :clojure}}]
   (coerce (.findAndModify ^DBCollection (get-coll coll)
                           ^DBObject (coerce where [from :mongo])
-                          ^DBObject (coerce only [from :mongo])
+                          ^DBObject (coerce-fields only)
                           ^DBObject (coerce sort [from :mongo])
                           remove?
                           ^DBObject (coerce update [from :mongo])
@@ -654,3 +657,31 @@ releases.  Please use 'make-connection' in combination with
       (-> (.getOutputCollection result)
             .getName
             keyword))))
+
+(defn group
+  "Performs group operation on given collection
+
+  Parameters:
+  coll         -> the collection
+  :reducefn    -> a javascript reduce function as a string
+  :where       -> query to match
+  :key         -> fields to group-by
+  :keyfn       -> string with javascript function returning a key object
+  :initial     -> initial value for reduce function
+  :finalizefn  -> string containing javascript function to be run on each item in result set just before return
+
+  See http://www.mongodb.org/display/DOCS/Aggregation for more information"
+  {:arglists '([coll {:key nil :keyfn nil :reducefn nil :where nil :finalizefn nil
+                      :initial nil :as :clojure}])}
+  [coll & {:keys [key keyfn reducefn where finalizefn initial as]
+           :or {key nil keyfn nil reducefn nil where nil finalizefn nil
+                initial nil as :clojure}}]
+  (coerce (.group ^DBCollection
+            (get-coll coll)
+            ^DBObject
+            (coerce (into {} (filter second {:key (when key (coerce-fields key))
+                     :$keyf keyfn
+                     :$reduce reducefn
+                     :finalize finalizefn
+                     :initial initial
+                     :cond where})) [:clojure :mongo ])) [:mongo as]))
