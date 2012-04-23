@@ -4,11 +4,12 @@
             [org.mongodb/mongo-java-driver "2.7.3"]])
 
 ;; project definition for multi-version testing:
-(defproject congomongo
+(defproject org.clojars.doo/congomongo
   "0.1.10-SNAPSHOT"
   :description "clojure-friendly api for MongoDB"
   :dev-dependencies [[lein-multi "1.1.0"]
-                     [swank-clojure "1.4.2"]]
+                     [swank-clojure "1.4.2"]
+                     [lein-clojars "0.7.0"]]
   :repositories [["sonatype-snapshots" "https://oss.sonatype.org/content/repositories/snapshots/"]]
   :dependencies ~(conj deps '[org.clojure/clojure "1.3.0"])
   :multi-deps {"1.2"  ~(conj deps '[org.clojure/clojure "1.2.1"])
