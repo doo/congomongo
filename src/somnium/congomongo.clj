@@ -354,20 +354,23 @@ releases.  Please use 'make-connection' in combination with
   "Inserts a map into collection. Will not overwrite existing maps.
    Takes optional from and to keyword arguments. To insert
    as a side-effect only specify :to as nil."
-  {:arglists '([coll obj {:many false :from :clojure :to :clojure}])}
-  [coll obj & {:keys [from to many]
+  {:arglists '([coll obj {:many false :from :clojure :to :clojure :write-concern nil}])}
+  [coll obj & {:keys [from to many write-concern]
                :or {from :clojure to :clojure many false}}]
   (let [coerced-obj (coerce obj [from :mongo] :many many)
+        db-coll (get-coll coll)
+        write-concern (or write-concern (.getWriteConcern db-coll))
+        _ (println "write-concern" write-concern db-coll)
         res (if many
-              (.insert ^DBCollection (get-coll coll) ^java.util.List coerced-obj)
-              (.insert ^DBCollection (get-coll coll) ^java.util.List (list coerced-obj)))]
+              (.insert ^DBCollection db-coll ^java.util.List coerced-obj write-concern)
+              (.insert ^DBCollection db-coll ^java.util.List (list coerced-obj) write-concern))]
     (coerce coerced-obj [:mongo to] :many many)))
 
 (defn mass-insert!
-  {:arglists '([coll objs {:from :clojure :to :clojure}])}
-  [coll objs & {:keys [from to]
+  {:arglists '([coll objs {:from :clojure :to :clojure :write-concern nil}])}
+  [coll objs & {:keys [from to write-concern]
                 :or {from :clojure to :clojure}}]
-  (insert! coll objs :from from :to to :many true))
+  (insert! coll objs :from from :to to :many true :write-concern write-concern))
 
 ;; should this raise an exception if _ns and _id aren't present?
 (defn update!
