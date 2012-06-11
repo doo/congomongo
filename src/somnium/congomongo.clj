@@ -360,7 +360,6 @@ releases.  Please use 'make-connection' in combination with
   (let [coerced-obj (coerce obj [from :mongo] :many many)
         db-coll (get-coll coll)
         write-concern (or write-concern (.getWriteConcern db-coll))
-        _ (println "write-concern" write-concern db-coll)
         res (if many
               (.insert ^DBCollection db-coll ^java.util.List coerced-obj write-concern)
               (.insert ^DBCollection db-coll ^java.util.List (list coerced-obj) write-concern))]
