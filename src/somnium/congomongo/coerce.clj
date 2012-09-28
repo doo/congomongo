@@ -2,7 +2,7 @@
   (:use [clojure.data.json :only [json-str read-json]]
         [clojure.core.incubator :only [seqable?]])
   (:import [clojure.lang IPersistentMap IPersistentVector Keyword]
-           [java.util Map List]
+           [java.util Map Collection]
            [com.mongodb DBObject BasicDBObject BasicDBList]
            [com.mongodb.gridfs GridFSFile]
            [com.mongodb.util JSON]))
@@ -39,8 +39,8 @@
   (mongo->clojure [^Map m keywordize]
                   (assocs->clojure (.entrySet m) keywordize))
 
-  List
-  (mongo->clojure [^List l keywordize]
+  Collection
+  (mongo->clojure [^Collection l keywordize]
                   (vec (map #(mongo->clojure % keywordize) l)))
 
   Object
@@ -82,8 +82,8 @@
   Keyword
   (clojure->mongo [^Keyword o] (.substring (str o) 1))
 
-  List
-  (clojure->mongo [^List o] (map clojure->mongo o))
+  Collection
+  (clojure->mongo [^Collection o] (map clojure->mongo o))
 
   Object
   (clojure->mongo [o] o)
